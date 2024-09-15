@@ -1,0 +1,13 @@
+name: Publish Core on npm
+
+permissions: write-all
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish_core:
+    uses: ./.github/workflows/publish.yaml
+    with:
+      target: core
+    secrets: inherit

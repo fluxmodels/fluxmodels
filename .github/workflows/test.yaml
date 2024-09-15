@@ -1,0 +1,70 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/**/src/**'
+      - 'packages/**/tests/**'
+      - '.github/workflows/test.yaml'
+      - '.prettierrc'
+      - 'eslint.config.mjs'
+      - 'jest.config.mjs'
+      - 'tsconfig.json'
+      - 'package.json'
+      - 'yarn.lock'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'packages/**/src/**'
+      - 'packages/**/tests/**'
+      - '.github/workflows/test.yaml'
+      - '.prettierrc'
+      - 'eslint.config.mjs'
+      - 'jest.config.mjs'
+      - 'tsconfig.json'
+      - 'package.json'
+      - 'yarn.lock'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ["18", "20", "22"]
+        typescript: ["5.0", "5.1", "5.2", "5.3"]
+    name: Test with TypeScript ${{ matrix.typescript }} on Node ${{ matrix.node }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Enable Corepack for Yarn
+        run: corepack enable
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'yarn'
+
+      - run: yarn install
+      - run: yarn add typescript@${{ matrix.typescript }}
+      - run: yarn build
+      - run: yarn lint
+      - run: yarn test:types
+      - run: yarn test:coverage
+
+      - name: coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          parallel: true
+
+  finish:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: coveralls finished
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          parallel-finished: true

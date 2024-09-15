@@ -1,0 +1,36 @@
+{
+    "compilerOptions": {
+        "target": "es6",
+        "module": "esnext",
+        "moduleResolution": "node",
+        "lib": ["esnext"],
+        "jsx": "react",
+        "baseUrl": ".",
+        "outDir": "lib",
+
+        "sourceMap": true,
+        "declaration": true,
+        "removeComments": true,
+
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+
+        "importHelpers": false,
+        "incremental": false,
+
+        "strict": true,
+        "alwaysStrict": true,
+        "noImplicitThis": false,
+
+        "allowSyntheticDefaultImports": true,
+        "useDefineForClassFields": true,
+        "downlevelIteration": true,
+        "esModuleInterop": true,
+
+        "paths": {
+            "@fluxmodels/core": ["packages/core/src"],
+            "@fluxmodels/react": ["packages/react/src"]
+        }
+    },
+    "exclude": ["**/node_modules", "**/lib"]
+}

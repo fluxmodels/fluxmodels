@@ -1,0 +1,13 @@
+name: Publish React on npm
+
+permissions: write-all
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish_react:
+    uses: ./.github/workflows/publish.yaml
+    with:
+      target: react
+    secrets: inherit

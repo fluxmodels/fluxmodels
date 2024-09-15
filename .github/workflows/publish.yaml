@@ -1,0 +1,77 @@
+name: Publish on npm
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
+
+jobs:
+  check_version:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    outputs:
+      should_run: ${{ steps.check_tag.outputs.should_run }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get package version
+        id: package_version
+        run: echo "version=$(node -p "require('./packages/${{ inputs.target }}/package.json').version")" >> $GITHUB_OUTPUT
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/${{ inputs.target }}-v${{ steps.package_version.outputs.version }}" >/dev/null 2>&1; then
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "should_run=false"
+          else
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "should_run=true"
+          fi
+
+  build_and_publish:
+    needs: check_version
+    if: needs.check_version.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack for Yarn
+        run: corepack enable
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          registry-url: 'https://registry.npmjs.org'
+          node-version: 20.x
+          cache: 'yarn'
+
+      - run: yarn install
+      - run: yarn build
+      - run: yarn test
+
+      - id: publish
+        name: publish to npm
+        run: npm publish --provenance --access public -w ./packages/${{ inputs.target }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - id: get_version
+        name: Get package version
+        run: |
+          version=$(node -p "require('./packages/${{ inputs.target }}/package.json').version")
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "Version: ${{ inputs.target }}-v$version"
+
+      - id: create_release
+        name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ inputs.target }}-v${{ steps.get_version.outputs.version }}
+        run: |
+          gh release create "$tag" \
+              --repo="$GITHUB_REPOSITORY" \
+              --title="${tag#v}" \
+              --generate-notes

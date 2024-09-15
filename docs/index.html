@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>FluxModels | Document</title>
+
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+        <meta name="title" content="FluxModels | Documentation" />
+        <meta name="description" content="FluxModels is a type-safe state management library for frontend applications, such as React" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
+
+        <meta property="og:url" content="https://fluxmodels.dev">
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="FluxModels">
+        <meta property="og:description" content="FluxModels is a type-safe state management library for Frontend applications, such as React">
+        <meta property="og:image" content="https://fluxmodels.dev/images/og.png">
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+
+        <meta name="twitter:card" content="summary_large_image">
+        <meta property="twitter:domain" content="fluxmodels.dev">
+        <meta property="twitter:url" content="https://fluxmodels.dev">
+        <meta name="twitter:title" content="FluxModels">
+        <meta name="twitter:description" content="FluxModels is a type-safe state management library for Frontend applications, such as React">
+        <meta name="twitter:image" content="https://fluxmodels.dev/images/og.png">
+
+        <link rel="manifest" href="/manifest.json" />
+
+        <link rel="icon" href="/images/favicon.ico" sizes="any" />
+        <link rel="apple-touch-icon" href="/images/apple-touch-icon.png" />
+
+        <link rel="stylesheet" href="./style.css" />
+    </head>
+    <body>
+        <div id="app"></div>
+        <script>
+            window.$docsify = {
+                name: 'FluxModels',
+                logo: 'images/icon128.png',
+                repo: 'fluxmodels/fluxmodels',
+
+                routerMode: 'history',
+                crossOriginLinks: [
+                    'https://github.com/fluxmodels/fluxmodels/actions',
+                    'https://github.com/fluxmodels/fluxmodels/issues/new',
+                    'https://opensource.org/licenses/MIT',
+                    'https://bundlephobia.com/package/@fluxmodels/react',
+                    'https://paypal.me/vadzimsharai',
+                    'https://www.npmjs.com/package/@fluxmodels/core',
+                    'https://www.npmjs.com/package/@fluxmodels/react',
+                    'https://fluxmodels.dev/',
+                    'https://docs.fluxmodels.dev/'
+                ],
+
+                search: 'auto',
+
+                remoteMarkdown: {
+                    tag: 'remote'
+                }
+            }
+        </script>
+
+        <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
+        <script src="//cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
+        <script src="//cdn.jsdelivr.net/npm/docsify-copy-code/dist/docsify-copy-code.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.28/components/prism-bash.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.28/components/prism-typescript.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.28/components/prism-jsx.min.js"></script>
+        <script src="//cdn.jsdelivr.net/npm/docsify-remote-markdown/dist/docsify-remote-markdown.min.js"></script>
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q0TPN0300K"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            window.gtag = window.gtag || function gtag(){ dataLayer.push(arguments) }
+            window.gtag('js', new Date());
+            window.gtag('config', 'G-Q0TPN0300K');
+ 
+            const gtagPlugin = function (hook) {
+                hook.beforeEach(() => window.gtag('event', 'page_view', {
+                    page_title: document.title,
+                    page_location: location.href,
+                    page_path: location.pathname,
+                }));
+            };
+
+            window.$docsify = window.$docsify || {};
+            $docsify.plugins = [gtagPlugin, ...($docsify.plugins || [])];
+        </script>
+    </body>
+</html>
