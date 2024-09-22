@@ -526,16 +526,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@fluxmodels/core@npm:=0.0.6":
-  version: 0.0.6
-  resolution: "@fluxmodels/core@npm:0.0.6"
-  dependencies:
-    metatyper: "npm:=1.0.10"
-  checksum: 10c0/1798324dba381a7a17807d63a3da9b28268dd8c69932e0c3a69c0c735a2ff8b55d429e80d54aae3d0f730d4b8e72e2cc8dccdc8adf8cc6f7dea3857b825be4a0
-  languageName: node
-  linkType: hard
-
-"@fluxmodels/core@workspace:packages/core":
+"@fluxmodels/core@npm:>0.0.6, @fluxmodels/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@fluxmodels/core@workspace:packages/core"
   dependencies:
@@ -598,7 +589,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fluxmodels/react@workspace:packages/react"
   dependencies:
-    "@fluxmodels/core": "npm:=0.0.6"
+    "@fluxmodels/core": "npm:>0.0.6"
     "@rollup/plugin-node-resolve": "npm:^15.2.3"
     "@rollup/plugin-terser": "npm:^0.4.4"
     "@rollup/plugin-typescript": "npm:^11.1.6"
