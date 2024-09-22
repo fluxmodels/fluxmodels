@@ -87,7 +87,7 @@ import { useModel } from '@fluxmodels/react'
 const UserModel = {
     username: '',
 
-    updateUsernameAction(username: string){
+    updateUsernameAction(username: string) {
         this.username = username
     }
 }
@@ -102,7 +102,7 @@ function UsernameInput() {
                 updateUser({ username: e.target.value })
 
                 // or
-                // updateUser.updateUsernameAction(e.target.value)
+                // user.updateUsernameAction(e.target.value)
             }
         } 
     />
