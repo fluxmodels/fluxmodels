@@ -14,8 +14,6 @@ type-safe state management
 
 # Installation
 
-React:
-
 ```bash
 npm install @fluxmodels/core
 # or

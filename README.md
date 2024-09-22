@@ -85,7 +85,11 @@ import React from 'react'
 import { useModel } from '@fluxmodels/react'
 
 const UserModel = {
-    username: ''
+    username: '',
+
+    updateUsernameAction(username: string){
+        this.username = username
+    }
 }
 
 function UsernameInput() {
@@ -94,7 +98,12 @@ function UsernameInput() {
     return <input 
         value={user.username} 
         onChange={(e) => 
-            updateUser({ username: e.target.value })
+            {
+                updateUser({ username: e.target.value })
+
+                // or
+                // updateUser.updateUsernameAction(e.target.value)
+            }
         } 
     />
 }
