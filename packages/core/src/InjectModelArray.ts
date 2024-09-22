@@ -212,8 +212,7 @@ export function InjectModelArray<
         | (new (...args: any[]) => any)
         | (new (...args: any[]) => any)[]
         | undefined
-        | null
-        | unknown,
+        | null,
     T extends C extends new (...args: any[]) => any ? InstanceType<C> : C
 >(
     model: <ReturnT extends Record<keyof any, any> | undefined | null = Partial<T>>(
@@ -222,9 +221,7 @@ export function InjectModelArray<
     args?: InjectedStateProxyArrayDynamicArgsType<T>
 ): InjectedArrayType<readonly T[]>
 
-export function InjectModelArray<
-    ReturnT extends Record<keyof any, any> | undefined | null | unknown
->(
+export function InjectModelArray<ReturnT extends Record<keyof any, any> | undefined | null>(
     model: (
         args: InjectArrayDynamicArgsType<Partial<ReturnT>>
     ) =>
