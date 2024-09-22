@@ -1,4 +1,4 @@
-import { InjectedType, type InjectedModelRefType } from './InjectModel'
+import { InjectedType } from './InjectModel'
 import { StateDefaultKeySymbol } from './StateStore'
 import {
     OnChange,
@@ -8,6 +8,7 @@ import {
     type OnChangeHandlerType
 } from './events'
 import { StateManager, type StateType } from './StateManager'
+import { InjectedArrayType } from './InjectModelArray'
 
 const StateReferenceSymbol = Symbol.for('[[StateReference]]')
 const StateProxyManagerSymbol = Symbol.for('[[StateProxyManager]]')
@@ -25,11 +26,13 @@ type BoundMethodType<T extends (...args: any[]) => any, C extends object> = (
 ) => ReturnType<T>
 
 export type StateSnapshotType<T extends Record<keyof any, any>> = {
-    readonly [key in keyof T]: Required<T[key]> extends Required<InjectedType<infer U>>
-        ? StateSnapshotType<U>
-        : T[key] extends (...args: any[]) => any
-          ? BoundMethodType<T[key], T>
-          : T[key]
+    readonly [key in keyof T]: Required<T[key]> extends Required<InjectedArrayType<infer U>>
+        ? { readonly [k in keyof U]: StateSnapshotType<U[k]> }
+        : Required<T[key]> extends Required<InjectedType<infer U>>
+          ? StateSnapshotType<U>
+          : T[key] extends (...args: any[]) => any
+            ? BoundMethodType<T[key], T>
+            : T[key]
 }
 
 export type ObservablePropsArgsType<T extends Record<keyof any, any>> =
@@ -48,8 +51,8 @@ export type StateProxyArgsType<T extends Record<keyof any, any>> = {
     autoResolveObservableProps?: boolean
     observeProps?: ObservablePropsArgsType<T>
 
-    initInjectedStates?: (stateProxy: StateProxyType<T>) => void
-    injectedStateProxyGlobalMap?: WeakMap<InjectedModelRefType, StateProxyType>
+    initInjectedStates?: (stateProxy: StateProxyType) => void
+    injectedStateProxyMap?: Map<StateType, StateProxyType>
 }
 
 /**
@@ -106,8 +109,7 @@ export class StateProxyManager<T extends Record<keyof any, any> = Record<keyof a
     autoResolveObservableProps = true
     readonly observableProps: ObservablePropsType = {}
 
-    readonly injectedStateProxyMap: Map<InjectedModelRefType, StateProxyType>
-    readonly injectedStateProxyGlobalMap: WeakMap<InjectedModelRefType, StateProxyType>
+    readonly injectedStateProxyMap: Map<StateType, StateProxyType>
 
     readonly initInjectedStates: (stateProxy: StateProxyType<T>) => void
 
@@ -127,9 +129,7 @@ export class StateProxyManager<T extends Record<keyof any, any> = Record<keyof a
         this.autoResolveObservableProps = args?.autoResolveObservableProps ?? true
         this.observableProps = this.Cls.prepareObservableProps(args?.observeProps ?? {})
 
-        this.injectedStateProxyMap = new Map()
-
-        this.injectedStateProxyGlobalMap = args?.injectedStateProxyGlobalMap ?? new WeakMap()
+        this.injectedStateProxyMap = args?.injectedStateProxyMap ?? new Map()
 
         this.initInjectedStates =
             args?.initInjectedStates ??
@@ -257,6 +257,29 @@ export class StateProxyManager<T extends Record<keyof any, any> = Record<keyof a
         return !!observableProps[propName]
     }
 
+    protected getHandler(
+        stateProxy: StateProxyType,
+        target: StateType<T>,
+        propName: string,
+        receiver: StateProxyType
+    ) {
+        if (StateProxySnapshotSymbol in receiver) {
+            target = receiver = receiver[StateProxySnapshotSymbol]
+        }
+
+        const result = Reflect.get(target, propName, receiver)
+
+        if (typeof result === 'function') {
+            return result.bind(stateProxy)
+        }
+
+        if (!StateProxyManager.isStateProxy(result) && !StateManager.isState(result)) {
+            this.addObservableProp(propName)
+        }
+
+        return result
+    }
+
     protected addObservableProp(propName: string) {
         const observableProps = this.observableProps
 
@@ -368,21 +391,7 @@ export class StateProxyManager<T extends Record<keyof any, any> = Record<keyof a
                     return Reflect.get(target, propName, receiver)
                 }
 
-                if (StateProxySnapshotSymbol in receiver) {
-                    target = receiver = receiver[StateProxySnapshotSymbol]
-                }
-
-                const result = Reflect.get(target, propName, receiver)
-
-                if (typeof result === 'function') {
-                    return result.bind(stateProxy)
-                }
-
-                if (!StateProxyManager.isStateProxy(result)) {
-                    stateProxyManager.addObservableProp(propName)
-                }
-
-                return result
+                return stateProxyManager.getHandler(stateProxy, target, propName, receiver)
             }
         })
 
@@ -392,7 +401,7 @@ export class StateProxyManager<T extends Record<keyof any, any> = Record<keyof a
             autoResolveObservableProps: args?.autoResolveObservableProps ?? true,
 
             initInjectedStates: args?.initInjectedStates,
-            injectedStateProxyGlobalMap: args?.injectedStateProxyGlobalMap
+            injectedStateProxyMap: args?.injectedStateProxyMap
         })
 
         stateProxyManager.initInjectedStates(stateProxy)

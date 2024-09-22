@@ -3,7 +3,8 @@ import {
     MetaType,
     LazyMetaTypeImpl,
     type MetaTypeArgsType,
-    type SerializerArgsType
+    type SerializeMetaTypeArgsType,
+    type ValidateMetaTypeArgsType
 } from 'metatyper'
 
 import { StateStore } from './StateStore'
@@ -24,14 +25,17 @@ export const INJECT_STORE = Symbol.for('[[InjectStore]]')
  */
 export type InjectedType<T extends Record<keyof any, any>> = T & { _injected?: true }
 
-type _InjectedStateProxyArgsType<T extends Record<keyof any, any> = Record<keyof any, any>> = Omit<
-    StateProxyArgsType<T>,
-    'initInjectedStates' | 'injectedStateProxyGlobalMap'
-> & {
-    key?: any
-    store?: StateStore | typeof INJECT_STORE
-    keyEqual?: (existsKey: any, searchKey: any) => boolean
+export type InjectDynamicArgsType = {
+    state: any
+    propName: string
 }
+
+export type InjectedStateProxyArgsType<T extends Record<keyof any, any> = Record<keyof any, any>> =
+    Omit<StateProxyArgsType<T>, 'initInjectedStates' | 'injectedStateProxyGlobalMap'> & {
+        key?: any
+        store?: StateStore | typeof INJECT_STORE
+        keyEqual?: (existsKey: any, searchKey: any) => boolean
+    }
 
 /**
  * This is the type of the arguments for the InjectModel function.
@@ -40,10 +44,11 @@ type _InjectedStateProxyArgsType<T extends Record<keyof any, any> = Record<keyof
  *
  * @template T - The type of the state.
  */
-export type InjectedStateProxyArgsType<T extends Record<keyof any, any> = Record<keyof any, any>> =
-
-        | _InjectedStateProxyArgsType<T>
-        | ((state: any, propName: string) => _InjectedStateProxyArgsType<T>)
+export type InjectedStateProxyDynamicArgsType<
+    T extends Record<keyof any, any> = Record<keyof any, any>
+> =
+    | InjectedStateProxyArgsType<T>
+    | ((args: InjectDynamicArgsType) => InjectedStateProxyArgsType<T>)
 
 /**
  * This is the type of reference to an injected model. Used to create a get or create a new state.
@@ -51,13 +56,13 @@ export type InjectedStateProxyArgsType<T extends Record<keyof any, any> = Record
  * @template T - The type of the state.
  */
 export type InjectedModelRefType<T extends Record<keyof any, any> = Record<keyof any, any>> = {
-    readonly model: (new (...args: any[]) => T) | ((...args: any[]) => T) | T
+    readonly model: (new (...args: any[]) => T) | ((args: InjectDynamicArgsType) => T) | T
     readonly args:
-        | InjectedStateProxyArgsType<T>
+        | InjectedStateProxyDynamicArgsType<T>
         | ((
               stateProxy: StateType<T> | StateProxyType<T>,
               propName: string
-          ) => InjectedStateProxyArgsType<T>)
+          ) => InjectedStateProxyDynamicArgsType<T>)
 }
 
 /**
@@ -70,110 +75,133 @@ export type InjectedModelRefType<T extends Record<keyof any, any> = Record<keyof
  * @template T - The type of the state.
  */
 export class InjectModelImpl extends LazyMetaTypeImpl {
-    protected override prepareMetaTypeArgs(metaTypeArgs: MetaTypeArgsType) {
-        return { ...metaTypeArgs, name: 'InjectedModel' }
+    protected getPreparedInjectedModelAndArgs<T extends Record<keyof any, any>>(
+        stateOrStateProxy: StateType<T> | StateProxyType<T>,
+        args: {
+            propName?: string
+        } & Record<keyof any, any>
+    ) {
+        const injectedModelRef = this.getSubType() as InjectedModelRefType
+
+        let injectedArgs = (injectedModelRef.args as InjectedStateProxyArgsType) ?? {}
+
+        if (injectedArgs instanceof Function) {
+            injectedArgs = injectedArgs({ state: stateOrStateProxy, ...args }) ?? {}
+        }
+
+        if (injectedArgs.key === INJECT_KEY) {
+            injectedArgs.key = StateManager.instance(stateOrStateProxy as StateType)?.key
+        }
+
+        if (injectedArgs.store === INJECT_STORE) {
+            injectedArgs.store = StateManager.instance(stateOrStateProxy as StateType)?.store
+        }
+
+        let model = injectedModelRef.model
+
+        if (typeof model === 'function' && !isClass(model)) {
+            model = (model as (...args: any[]) => any)({ state: stateOrStateProxy, ...args })
+        }
+
+        if (typeof model !== 'object' && typeof model !== 'function') {
+            if (model === null) return null
+
+            return undefined
+        }
+
+        return [model, injectedArgs] as const
+    }
+
+    protected getInjectedState(model: any, injectedArgs: InjectedStateProxyArgsType) {
+        return StateManager.getOrCreateState(model, {
+            key: injectedArgs.key,
+            keyEqual: injectedArgs.keyEqual,
+            store: injectedArgs.store as StateStore | undefined
+        })
+    }
+
+    protected getInjectedStateProxy({
+        stateProxy,
+        injectedState,
+        isNewInjectedState,
+        propName,
+        injectedArgs
+    }: {
+        stateProxy: StateProxyType
+        injectedState: StateType
+        isNewInjectedState: boolean
+        propName: string
+        injectedArgs: InjectedStateProxyArgsType
+    }) {
+        const stateProxyManager = StateProxyManager.instance(stateProxy)
+
+        if (!isNewInjectedState) {
+            const cachedProxy = stateProxyManager.injectedStateProxyMap.get(injectedState)
+
+            if (cachedProxy) {
+                return cachedProxy
+            }
+        }
+
+        const observableProps = stateProxyManager.observableProps ?? {}
+
+        const observeInjectedStateProps =
+            typeof observableProps[propName] === 'object'
+                ? (observableProps[propName] as object)
+                : undefined
+
+        const injectedStateProxy = stateProxyManager.Cls.createStateProxy(injectedState, {
+            observeProps: observeInjectedStateProps,
+            autoResolveObservableProps: injectedArgs.autoResolveObservableProps,
+
+            injectedStateProxyMap: stateProxyManager.injectedStateProxyMap,
+            initInjectedStates: (stateProxy: any) => {
+                const state = StateProxyManager.instance(stateProxy).state
+
+                stateProxyManager.injectedStateProxyMap.set(state, stateProxy)
+
+                Object.entries(stateProxy)
+            }
+        })
+
+        return injectedStateProxy
+    }
+
+    protected serializeToState(serializationArgs: SerializeMetaTypeArgsType) {
+        const propName = serializationArgs.propName
+        const stateOrStateProxy = serializationArgs.targetObject as StateType | StateProxyType
+
+        if (!stateOrStateProxy || !propName || typeof propName === 'symbol') return
+
+        const tupleModelArgs = this.getPreparedInjectedModelAndArgs(stateOrStateProxy, {
+            propName
+        })
+
+        if (!tupleModelArgs) return tupleModelArgs
+
+        const [model, injectedArgs] = tupleModelArgs
+
+        const [injectedState, isNewInjectedState] = this.getInjectedState(model, injectedArgs)
+
+        if (!StateProxyManager.isStateProxy(stateOrStateProxy)) {
+            return injectedState
+        }
+
+        return this.getInjectedStateProxy({
+            stateProxy: stateOrStateProxy as StateProxyType,
+            injectedState,
+            isNewInjectedState,
+            propName,
+            injectedArgs
+        })
     }
 
     protected override configure(): void {
         this.builtinSerializers.push({
             name: 'InjectModel',
-            serialize: (serializerArgs: SerializerArgsType) => {
+            serialize: (...args) => {
                 try {
-                    const propName = serializerArgs.propName
-                    const stateOrStateProxy = serializerArgs.targetObject as
-                        | StateType
-                        | StateProxyType
-
-                    if (!stateOrStateProxy || !propName || typeof propName === 'symbol') return
-
-                    const injectedModelRef = this.getSubType() as InjectedModelRefType
-
-                    let injectedArgs = (injectedModelRef.args as _InjectedStateProxyArgsType) ?? {}
-
-                    if (injectedArgs instanceof Function) {
-                        injectedArgs = injectedArgs(stateOrStateProxy, propName) ?? {}
-                    }
-
-                    if (injectedArgs.key === INJECT_KEY) {
-                        injectedArgs.key = StateManager.instance(
-                            stateOrStateProxy as StateType
-                        )?.key
-                    }
-
-                    if (injectedArgs.store === INJECT_STORE) {
-                        injectedArgs.store = StateManager.instance(
-                            stateOrStateProxy as StateType
-                        )?.store
-                    }
-
-                    let model = injectedModelRef.model
-
-                    if (typeof model === 'function' && !isClass(model)) {
-                        model = (model as (...args: any[]) => any)(stateOrStateProxy, propName)
-                    }
-
-                    if (typeof model !== 'object' && typeof model !== 'function') {
-                        if (model === null) return null
-
-                        return undefined
-                    }
-
-                    const [injectedState, isNew] = StateManager.getOrCreateState<
-                        Record<keyof any, any>
-                    >(model, {
-                        key: injectedArgs.key,
-                        keyEqual: injectedArgs.keyEqual,
-                        store: injectedArgs.store
-                    })
-
-                    if (!StateProxyManager.isStateProxy(stateOrStateProxy)) {
-                        return injectedState
-                    }
-
-                    const stateProxy = stateOrStateProxy as StateProxyType
-                    const stateProxyManager = StateProxyManager.instance(stateProxy)
-
-                    if (!isNew) {
-                        const cachedProxy =
-                            stateProxyManager.injectedStateProxyMap.get(injectedModelRef) ||
-                            stateProxyManager.injectedStateProxyGlobalMap.get(injectedModelRef)
-
-                        if (cachedProxy) {
-                            return cachedProxy
-                        }
-                    }
-
-                    const observableProps = stateProxyManager.observableProps ?? {}
-
-                    const observeInjectedStateProps =
-                        typeof observableProps[propName] === 'object'
-                            ? (observableProps[propName] as object)
-                            : undefined
-
-                    const injectedStateProxy = stateProxyManager.Cls.createStateProxy(
-                        injectedState,
-                        {
-                            observeProps: observeInjectedStateProps,
-                            autoResolveObservableProps: injectedArgs.autoResolveObservableProps,
-
-                            injectedStateProxyGlobalMap:
-                                stateProxyManager.injectedStateProxyGlobalMap,
-                            initInjectedStates: (stateProxy: any) => {
-                                stateProxyManager.injectedStateProxyGlobalMap.set(
-                                    injectedModelRef,
-                                    stateProxy
-                                )
-                                stateProxyManager.injectedStateProxyMap.set(
-                                    injectedModelRef,
-                                    stateProxy
-                                )
-
-                                Object.entries(stateProxy)
-                            }
-                        }
-                    )
-
-                    return injectedStateProxy
+                    return this.serializeToState(...args)
                 } catch (e) {
                     console.error(e)
 
@@ -181,14 +209,21 @@ export class InjectModelImpl extends LazyMetaTypeImpl {
                 }
             }
         })
+
+        this.builtinValidators.push({
+            name: 'ReadOnlyInjectModel',
+            validate: (args: ValidateMetaTypeArgsType) => {
+                return args?.value === undefined
+            }
+        })
+    }
+
+    protected override prepareMetaTypeArgs(metaTypeArgs: MetaTypeArgsType) {
+        return { ...metaTypeArgs, name: 'InjectedModel' }
     }
 
     override metaTypeValidatorFunc() {
         return false
-    }
-
-    override toString() {
-        return `${this.name}<${this.getSubType().model}>`
     }
 }
 
@@ -261,16 +296,6 @@ export class InjectModelImpl extends LazyMetaTypeImpl {
  * profileState.name = 'John' // This will trigger the mounted function above
  * ```
  */
-export function InjectModel<T extends object>(
-    model: new (...args: any[]) => T,
-    args?: InjectedStateProxyArgsType<T>
-): InjectedType<T>
-
-export function InjectModel<T extends object>(
-    model: (state: any, propName: string) => new (...args: any[]) => T,
-    args?: InjectedStateProxyArgsType<T>
-): InjectedType<T>
-
 export function InjectModel<
     C extends
         | Record<keyof any, any>
@@ -278,20 +303,34 @@ export function InjectModel<
         | (new (...args: any[]) => any)
         | (new (...args: any[]) => any)[]
         | undefined
-        | null
+        | null,
+    T extends C extends new (...args: any[]) => any ? InstanceType<C> : C
 >(
-    model: (state: any, propName: string) => C,
-    args?: InjectedStateProxyArgsType<C extends new (...args: any[]) => any ? InstanceType<C> : C>
-): InjectedType<C extends new (...args: any[]) => any ? InstanceType<C> : C>
+    model: (args: InjectDynamicArgsType) => C,
+    args?: InjectedStateProxyDynamicArgsType<T>
+): InjectedType<T>
 
-export function InjectModel<T>(
-    model: (state: any, propName: string) => T,
-    args?: T extends object ? InjectedStateProxyArgsType<T> : any
-): T extends object ? InjectedType<T> : unknown
+export function InjectModel<ReturnT extends Record<keyof any, any>>(
+    model: (
+        args: InjectDynamicArgsType
+    ) =>
+        | Record<keyof any, any>
+        | Record<keyof any, any>[]
+        | (new (...args: any[]) => any)
+        | (new (...args: any[]) => any)[]
+        | undefined
+        | null,
+    args?: InjectedStateProxyDynamicArgsType<ReturnT>
+): InjectedType<ReturnT>
 
 export function InjectModel<T extends object>(
+    model: new (...args: any[]) => T,
+    args?: InjectedStateProxyDynamicArgsType<T>
+): InjectedType<T>
+
+export function InjectModel<T>(
     model: T,
-    args?: InjectedStateProxyArgsType<T>
+    args?: T extends object ? InjectedStateProxyDynamicArgsType<T> : any
 ): T extends object ? InjectedType<T> : unknown
 
 export function InjectModel(model: any, args?: any) {

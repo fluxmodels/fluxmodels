@@ -112,13 +112,20 @@ More complex example:
 import React, { Suspense } from 'react'
 
 import { STRING } from 'metatyper'
-import { useModel, OnInit, UseSuspense, getKey } from '@fluxmodels/react'
+import { useModel, OnInit, UseSuspense, getKey, InjectModelArray } from '@fluxmodels/react'
 ```
 
 ```jsx
+class ProductModel {
+    id = ''
+    name = STRING({ maxLength: 12, default: '' })
+}
+
 class UserModel {
     id = ''
     username = STRING({ maxLength: 12, default: '' })
+
+    products = InjectModelArray(ProductModel, ({ item }) => ({ key: item.id }))
 
     async loadUserData({ userID }) {
         // Here could be your API call
@@ -126,7 +133,12 @@ class UserModel {
 
         const userData = {
             id: userID,
-            username: 'user_' + userID
+            username: 'user_' + userID,
+            products: [
+                { id: '1', name: 'Product 1' },
+                { id: '2', name: 'Product 2' },
+                { id: '3', name: 'Product 3' },
+            ]
         }
 
         Object.assign(this, userData)
@@ -143,6 +155,10 @@ class UserModel {
 ```
 
 ```jsx
+function ProductComponent({ name }) {
+    return <div>Product: {name}</div>
+}
+
 function UserComponent({ userID }) {
     const [user] = useModel(UserModel, { key: userID })
 
@@ -150,6 +166,13 @@ function UserComponent({ userID }) {
         <div>
             <p>ID: {user.id}</p>
             <p>Username: {user.username}</p>
+
+            <p>Products:</p>
+
+            {user.products.map((product) => (
+                <ProductComponent key={product.id} name={product.name} />
+            ))}
+
             <br />
             <button onClick={() => user.loadUser()}>Load user again</button>
         </div>
@@ -189,7 +212,8 @@ function App() {
     - [State and StateManager](#state-and-statemanager)
     - [StateProxy and StateProxyManager](#stateproxy-and-stateproxymanager)
     - [Observable Properties](#observable-properties)
-    - [Injected Models](#injected-models)
+    - [Injected States (InjectModel)](#injected-states-injectmodel)
+    - [Injected States Arrays (InjectModelArray)](#injected-states-arrays-injectmodelarray)
     - [Models Store](#models-store)
     - [Event Handling with EventsManager](#event-handling-with-eventsmanager)
     - [Utils and Tools](#utils-and-tools)
@@ -504,7 +528,7 @@ By leveraging observable properties, FluxModels provides a powerful yet flexible
 
 &nbsp;
 
-### Injected Models
+### Injected States (InjectModel)
 
 Creates a dynamic property that returns a state (either new or from the store).
 When the property is accessed, it calls StateManager.getOrCreateState() with the provided model and arguments.
@@ -583,6 +607,99 @@ userStateProxy.mount(function rerender() {
 const profileState = userState.profile
 profileState.name = 'John' // This will trigger the mounted function above
 ```
+
+&nbsp;
+
+### Injected States Arrays (InjectModelArray)
+
+Creates a dynamic property that returns an array of states (either new or from the store).
+When the property is changed, it calls StateManager.getOrCreateState() for each item in the array with the provided model and arguments.
+
+InjectModelArray accepts two arguments:
+
+1. `model`: A class or object model (see [Model](#model) for more details)
+2. `args` (optional): An object with the following properties:
+    - `key`: `any` - Identifier for the state array in the store
+    - `store`: `ModelsStore` - Custom models store (see [Models Store](#models-store))
+    - `keyEqual`: `(existsKey: string, searchKey: string) => boolean` - Custom key equality function
+    - `observeProps`: `ObservablePropsArgsType` - Properties to observe (see [Observable Props](#observable-properties))
+    - `autoResolveObservableProps`: `boolean` - Controls automatic resolution of observable props (default: `true`)
+    - `disableSuspense`: `boolean` - Disables [UseSuspense](#react-suspense-and-usesuspense) functionality if `true`
+
+> `store` accepts INJECT_STORE symbol to also inject the parent state store.
+
+> `model` and `args` can be functions that will be called for each item in the array when the property is accessed.
+> These functions receive additional parameters: `item` (the current array item) and `index` (the index of the current item in the array).
+
+Basic usage:
+
+```ts
+class UserProfile {
+  name = ''
+}
+
+class UserWithProfiles {
+  profiles = InjectModelArray(UserProfile)
+}
+```
+
+Usage with dynamic model and key selection:
+
+```ts
+import { InjectModelArray } from '@fluxmodels/core'
+
+class PrivateProject {
+  id = ''
+  name = ''
+}
+
+class PublicProject {
+  id = ''
+  name = ''
+  isPublic = true
+  publicField = 'public'
+}
+
+class UserWithProjects {
+  id = ''
+
+  projects = InjectModelArray<PublicProject | PrivateProject>(
+    ({ item, index, state }) => item.isPublic ? PublicProject : PrivateProject,
+    ({ item: project, index, state: user }) => ({ key: `${user.id}:${project.id}` })
+  )
+}
+```
+
+State management and reactivity:
+
+```ts
+import { StateManager, StateProxyManager } from '@fluxmodels/core'
+
+const [userState] = StateManager.getOrCreateState(UserWithProfile)
+const userStateProxy = StateProxyManager.createStateProxy(userState)
+
+userStateProxy.mount(function rerender() {
+  // This function will be called when userState or its injected states change
+  console.log('User state updated')
+})
+
+// This is similar to a `useModel` hook in `@fluxmodels/react`
+// In a React component, userStateProxy.mount would be called during component mounting
+// The rerender function passed to mount will be triggered on state changes,
+// causing the component to re-render and reflect the updated state
+
+userState.id = '1'
+userState.projects = [
+    { id: '1', name: 'Project 1', isPublic: true },
+    { id: '2', name: 'Project 2' },
+] // This will trigger the mounted function above
+
+userState.projects[0].name = 'Project 11' // This also will trigger the mounted function above
+
+userState.projects = []  // And this will also trigger the mounted function above
+```
+
+> userState.projects.push unavailable, because `projects` is frozen array
 
 &nbsp;
 

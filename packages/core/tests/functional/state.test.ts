@@ -2,6 +2,7 @@ import { Meta, NUMBER } from 'metatyper'
 
 import {
     InjectModel,
+    InjectModelArray,
     StateStore,
     StateManager,
     StateProxyManager,
@@ -140,20 +141,20 @@ describe('Models States', () => {
 
     describe('Inject Model', () => {
         it('injects a model and uses it', () => {
-            class model1 {
+            class Model1 {
                 field1 = NUMBER({ default: 1 })
                 field2 = {
                     prop1: 1
                 }
             }
 
-            class model2 {
-                field3 = InjectModel(model1)
+            class Model2 {
+                field3 = InjectModel(Model1)
             }
 
             const key = { _: 'key1' }
-            const state1 = StateManager.createState(model1, { store, key })
-            const state2 = StateManager.createState(model2, { store, key })
+            const state1 = StateManager.createState(Model1, { store, key })
+            const state2 = StateManager.createState(Model2, { store, key })
 
             const stateProxy1 = StateProxyManager.createStateProxy(state1)
             const stateProxy1Manager = StateProxyManager.instance(stateProxy1)
@@ -254,7 +255,7 @@ describe('Models States', () => {
                 key = 'key1'
 
                 state = InjectModel(
-                    (state: Hub) => {
+                    ({ state }: { state: Hub }) => {
                         switch (state.modelName) {
                             case 'A':
                                 return A
@@ -262,7 +263,7 @@ describe('Models States', () => {
                                 return B
                         }
                     },
-                    (state: Hub) => ({
+                    ({ state }) => ({
                         key: state.key
                     })
                 )
@@ -304,6 +305,222 @@ describe('Models States', () => {
             hub.modelName = 'C'
 
             expect(hub.state).toBe(undefined)
+        })
+    })
+
+    describe('Inject Model Array', () => {
+        it('injects a model array and uses it', () => {
+            class Model1 {
+                field1 = NUMBER({ default: 1 })
+                field2 = {
+                    prop1: 1
+                }
+            }
+
+            class Model2 {
+                field3 = InjectModelArray(Model1, ({ item }) => ({
+                    store,
+                    key: item.field1
+                }))
+            }
+
+            const key = { _: 'key1' }
+            const state2 = StateManager.createState(Model2, { store, key })
+
+            const stateProxy2 = StateProxyManager.createStateProxy(state2)
+            const stateProxy2Manager = StateProxyManager.instance(stateProxy2)
+
+            expect(stateProxy2Manager.observableProps).toEqual({})
+
+            expect(stateProxy2.field3.length).toBe(0)
+
+            expect(stateProxy2Manager.observableProps).toEqual({
+                field3: true
+            })
+
+            stateProxy2.field3 = [
+                { field1: 1, field2: { prop1: 1 } },
+                { field1: 2, field2: { prop1: 2 } }
+            ]
+
+            expect(stateProxy2.field3.length).toBe(2)
+            expect(stateProxy2.field3[0].field1).toBe(1)
+            expect(stateProxy2.field3[1].field1).toBe(2)
+
+            expect(stateProxy2Manager.observableProps).toEqual({
+                field3: true
+            })
+
+            const [state1V1, state1V1IsNew] = StateManager.getOrCreateState(Model1, {
+                store,
+                key: 1
+            })
+            const [, state1V2IsNew] = StateManager.getOrCreateState(Model1, {
+                store,
+                key: 2
+            })
+            const [, state1V2AnotherStoreIsNew] = StateManager.getOrCreateState(Model1, {
+                key: 2
+            })
+
+            expect(state1V1IsNew).toBe(false)
+            expect(state1V2IsNew).toBe(false)
+            expect(state1V2AnotherStoreIsNew).toBe(true)
+
+            const stateProxy2Field3V1 = stateProxy2.field3[0]
+
+            expect(StateProxyManager.isStateProxy(stateProxy2Field3V1)).toBe(true)
+            expect(stateProxy2Field3V1).toEqual(state1V1)
+        })
+
+        it('injects circular models', () => {
+            class Model1 {
+                mode1 = 1
+                injected2 = InjectModelArray<Model2>(
+                    () => Model2,
+                    () => ({
+                        store,
+                        key: 1
+                    })
+                )
+            }
+
+            class Model2 {
+                mode2 = 2
+                injected1 = InjectModelArray(
+                    () => Model1,
+                    () => ({
+                        store,
+                        key: 2,
+                        autoResolveObservableProps: false
+                    })
+                )
+            }
+
+            const [state1] = StateManager.getOrCreateState(Model1, { store, key: 2 })
+            const [state2] = StateManager.getOrCreateState(Model2, { store, key: 1 })
+
+            state1.injected2 = [state2]
+            state2.injected1 = [state1]
+
+            expect(state1.injected2[0]).toEqual(state2)
+            expect(state2.injected1[0]).toEqual(state1)
+
+            const state1Proxy = StateProxyManager.createStateProxy(state1, {
+                observeProps: {
+                    mode1: true
+                }
+            })
+            const state2Proxy = StateProxyManager.createStateProxy(state2, {
+                observeProps: {
+                    mode2: true
+                }
+            })
+
+            expect(state1Proxy.injected2).toEqual([state2])
+            expect(state2Proxy.injected1).toEqual([state1])
+
+            expect(state1Proxy.injected2[0].mode2).toBe(state2.mode2)
+            expect(state2Proxy.injected1[0].mode1).toBe(state1.mode1)
+
+            const state1ProxyManager = StateProxyManager.instance(state1Proxy)
+            const state2ProxyManager = StateProxyManager.instance(state2Proxy)
+
+            const mockRerender1 = jest.fn()
+            const mockRerender2 = jest.fn()
+
+            state1ProxyManager.mount(mockRerender1)
+            state2ProxyManager.mount(mockRerender2)
+
+            state1Proxy.injected2[0].mode2 = 22
+
+            expect(mockRerender1).toHaveBeenCalledTimes(1)
+            expect(mockRerender2).toHaveBeenCalledTimes(2)
+
+            state2Proxy.injected1[0].mode1 = 11
+
+            expect(mockRerender1).toHaveBeenCalledTimes(2)
+            expect(mockRerender2).toHaveBeenCalledTimes(2)
+
+            const state1ProxySnapshot = state1ProxyManager.createSnapshot()
+            const state2ProxySnapshot = state2ProxyManager.createSnapshot()
+
+            expect(state1ProxySnapshot.injected2[0].mode2).toBe(state2ProxySnapshot.mode2)
+            expect(state2ProxySnapshot.injected1[0].mode1).toBe(state1ProxySnapshot.mode1)
+
+            expect(Object.isFrozen(state1ProxySnapshot.injected2)).toBeTruthy()
+            expect(Object.isFrozen(state2ProxySnapshot.injected1)).toBeTruthy()
+
+            // TODO: fix validation of array
+            state1.injected2 = [state2]
+
+            expect(mockRerender1).toHaveBeenCalledTimes(3)
+            expect(mockRerender2).toHaveBeenCalledTimes(2)
+        })
+
+        it('injects models with dynamic args', () => {
+            class A {
+                a = 1
+            }
+
+            const B = {
+                b: 2
+            }
+
+            class Hub {
+                modelName = 'A'
+                key = 'key1'
+
+                state = InjectModelArray<A | typeof B | undefined>(
+                    ({ state }) => {
+                        switch (state.modelName) {
+                            case 'A':
+                                return A
+                            case 'B':
+                                return B
+                        }
+                    },
+                    ({ state }) => ({
+                        key: state.key
+                    })
+                )
+            }
+
+            const hub = StateManager.createState(Hub)
+
+            hub.state = [{ a: 1 }]
+
+            let stateAsA = hub.state[0] as A
+
+            expect((stateAsA as any).b).toBe(undefined)
+            expect(stateAsA.a).toBe(1)
+            stateAsA.a = 11
+            expect(stateAsA.a).toBe(11)
+
+            hub.key = 'key2'
+
+            expect(stateAsA.a).toBe(11)
+
+            stateAsA = hub.state[0] as A
+            expect(stateAsA.a).toBe(11)
+
+            hub.modelName = 'C'
+
+            stateAsA = hub.state[0] as A
+            expect(stateAsA.a).toBe(11)
+
+            hub.modelName = 'B'
+
+            stateAsA = hub.state[0] as A
+            expect(stateAsA.a).toBe(11)
+
+            hub.state = [{ b: 1 }]
+
+            const stateAsB = hub.state[0] as typeof B
+
+            expect(stateAsB.b).toBe(1)
+            expect((stateAsB as any).a).toBe(undefined)
+            expect(stateAsA.a).toBe(11)
         })
     })
 })

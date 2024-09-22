@@ -1,5 +1,6 @@
 export * from './StateStore'
 export * from './InjectModel'
+export * from './InjectModelArray'
 export * from './StateManager'
 export * from './StateProxyManager'
 export * from './EventsManager'
