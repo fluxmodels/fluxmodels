@@ -1,0 +1,6 @@
+yarn lint:fix
+
+yarn test:prepare
+yarn test
+
+npx typedoc

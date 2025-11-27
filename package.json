@@ -1,0 +1,67 @@
+{
+  "name": "@fluxmodels/fluxmodels",
+  "private": true,
+  "author": {
+    "name": "Vadzim Sharai",
+    "email": "vadzimsharai@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fluxmodels/fluxmodels.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fluxmodels/fluxmodels/issues"
+  },
+  "homepage": "https://fluxmodels.dev",
+  "workspaces": [
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@eslint/compat": "^1.1.1",
+    "@eslint/eslintrc": "^3.3.3",
+    "@eslint/js": "^9.39.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^22.5.4",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.5.0",
+    "@typescript-eslint/parser": "^8.5.0",
+    "eslint": "^9.39.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-react": "^7.37.5",
+    "globals": "^16.5.0",
+    "husky": "^9.1.7",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "lerna": "^8.1.8",
+    "prettier": "^3.7.3",
+    "rimraf": "^6.1.2",
+    "rollup": "^4.53.3",
+    "rollup-plugin-filesize": "^10.0.0",
+    "ts-jest": "^29.4.6",
+    "typedoc": "^0.28.15",
+    "typedoc-plugin-markdown": "^4.9.0",
+    "typescript": "^5.5.3"
+  },
+  "scripts": {
+    "prepare:husky": "husky && sh .husky/pre-commit",
+    "prepare:typedoc": "typedoc",
+    "prepare": "yarn prepare:husky",
+    "lint": "eslint packages/*/{src,tests}/**/*.{ts,tsx}",
+    "lint:fix": "yarn lint --fix && prettier --write packages/*/{src,tests}/**/*.{ts,tsx,md}",
+    "test:types": "tsc --noEmit --project  ./tsconfig.json",
+    "test:jest": "jest",
+    "test:coverage": "jest --coverage",
+    "test:prepare": "ts-node packages/core/tests/scripts/prepare.mts && ts-node packages/react/tests/scripts/prepare.mts",
+    "test": "yarn lint && yarn test:types && yarn test:coverage",
+    "build": "yarn lerna run build",
+    "build:dev": "yarn lerna run build:dev",
+    "sandbox:core": "yarn lerna run sandbox --scope=@fluxmodels/core",
+    "sandbox:react": "yarn lerna run sandbox --scope=@fluxmodels/react"
+  },
+  "packageManager": "yarn@4.11.0"
+}
