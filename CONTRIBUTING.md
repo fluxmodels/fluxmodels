@@ -23,7 +23,6 @@ The following steps will get you setup the project environment:
 ### Commits naming
 
 We follow the [conventional commit spec](https://www.conventionalcommits.org/en/v1.0.0/) for our commit messages. Please review the spec for more details.
-
 Your commit type must be one of the following:
 
 - **feat**: A new feature
@@ -35,6 +34,21 @@ Your commit type must be one of the following:
 - **docs**: Documentation only changes
 - **chore**: Changes that do not relate to a fix or feature and don't modify src or test files
   (e.g. modifying the `.eslintrc.js` or updating dependencies)
+
+&nbsp;
+
+#### Scope
+
+If your change is related to a specific package, please include the package name in parentheses after the commit type.
+
+Examples:
+- `feat(core): add new feature`
+- `feat(core,react): add new feature affecting both packages`
+- `fix(react): fix bug in React integration`
+- `chore: update pre-commit` (no scope needed for general changes)
+- `ci: update GitHub Actions workflow` (no scope needed for CI changes)
+- `ci(core): update core package CI configuration`
+
 
 &nbsp;
 
