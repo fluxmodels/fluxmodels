@@ -248,7 +248,11 @@ export class StateProxyManager<T extends AnyRecord = AnyRecord> {
 
             const snapshotData: Partial<AnyRecord> = {}
 
-            circularCacheMap.set(stateProxy, snapshotData)
+            const snapshot = {
+                [StateProxySnapshotSymbol]: snapshotData
+            }
+
+            circularCacheMap.set(stateProxy, snapshot)
 
             const stateProxyManager = StateProxyManager.instance(stateProxy)
 
@@ -275,10 +279,6 @@ export class StateProxyManager<T extends AnyRecord = AnyRecord> {
             }
 
             stateProxyManager._autoResolveObservablePropsDisabled = false
-
-            const snapshot = {
-                [StateProxySnapshotSymbol]: snapshotData
-            }
 
             Object.defineProperties(snapshot, {
                 toString: {
