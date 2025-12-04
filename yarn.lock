@@ -542,7 +542,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@fluxmodels/core@npm:=1.0.0, @fluxmodels/core@workspace:packages/core":
+"@fluxmodels/core@npm:~1.0.1, @fluxmodels/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@fluxmodels/core@workspace:packages/core"
   dependencies:
@@ -602,7 +602,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fluxmodels/react@workspace:packages/react"
   dependencies:
-    "@fluxmodels/core": "npm:=1.0.0"
+    "@fluxmodels/core": "npm:~1.0.1"
     "@rollup/plugin-node-resolve": "npm:^16.0.3"
     "@rollup/plugin-terser": "npm:^0.4.4"
     "@rollup/plugin-typescript": "npm:^12.3.0"
