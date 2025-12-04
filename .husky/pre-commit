@@ -1,3 +1,4 @@
+yarn
 yarn lint:fix
 
 yarn test:prepare
