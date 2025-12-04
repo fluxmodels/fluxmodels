@@ -1,6 +1,6 @@
 {
     "name": "@fluxmodels/react",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "license": "MIT",
     "description": "FluxModels is a type-safe state management library for React applications",
     "author": {
@@ -72,7 +72,7 @@
         }
     },
     "dependencies": {
-        "@fluxmodels/core": "=1.0.0"
+        "@fluxmodels/core": "~1.0.1"
     },
     "devDependencies": {
         "@rollup/plugin-node-resolve": "^16.0.3",
