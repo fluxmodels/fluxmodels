@@ -480,7 +480,12 @@ export class StateManager<T extends AnyRecord = AnyRecord> {
      * @returns Whether the value is a FluxModels State.
      */
     static isState(state: any) {
-        return typeof state === 'object' && !!state[IsStateSymbol]
+        return (
+            state !== null &&
+            state !== undefined &&
+            typeof state === 'object' &&
+            !!state[IsStateSymbol]
+        )
     }
 
     /**
