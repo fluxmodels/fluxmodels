@@ -1018,7 +1018,7 @@ The provided key or a default key symbol.
 static removeState(state: State): void;
 ```
 
-Defined in: [core/src/StateManager.ts:567](https://github.com/fluxmodels/fluxmodels/blob/main/packages/core/src/StateManager.ts#L567)
+Defined in: [core/src/StateManager.ts:572](https://github.com/fluxmodels/fluxmodels/blob/main/packages/core/src/StateManager.ts#L572)
 
 Removes a state from the store.
 
@@ -1068,7 +1068,7 @@ static upsertStates<T>(
    args?: Omit<StateArgs<T>, "key" | "initialValues">): State<T>[];
 ```
 
-Defined in: [core/src/StateManager.ts:541](https://github.com/fluxmodels/fluxmodels/blob/main/packages/core/src/StateManager.ts#L541)
+Defined in: [core/src/StateManager.ts:546](https://github.com/fluxmodels/fluxmodels/blob/main/packages/core/src/StateManager.ts#L546)
 
 Upserts states for the given model and data.
 
@@ -1170,7 +1170,7 @@ An array of states.
 static waitForInit(state: State): Promise<void>;
 ```
 
-Defined in: [core/src/StateManager.ts:492](https://github.com/fluxmodels/fluxmodels/blob/main/packages/core/src/StateManager.ts#L492)
+Defined in: [core/src/StateManager.ts:497](https://github.com/fluxmodels/fluxmodels/blob/main/packages/core/src/StateManager.ts#L497)
 
 Waits for the state to be initialized (wait async handlers).
 
