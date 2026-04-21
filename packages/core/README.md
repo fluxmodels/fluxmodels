@@ -73,7 +73,7 @@ These settings allow TypeScript to properly handle the decorators used in FluxMo
 
 ## Simple Example
 
-[![Open in CodeSandbox](https://img.shields.io/badge/Open_in-CodeSandbox-151515?logo=codesandbox&logoColor=white)](https://codesandbox.io/s/fluxmodel-react-basic-usage-example-1-hpf55z?fontsize=14&hidenavigation=1&theme=dark)
+[![Open in CodeSandbox](https://img.shields.io/badge/Open_in-CodeSandbox-eaff96?logo=codesandbox&logoColor=white)](https://codesandbox.io/s/fluxmodel-react-basic-usage-example-1-hpf55z?fontsize=14&hidenavigation=1&theme=dark)
 
 ```tsx
 import { useModel, STRING, PASSWORD, OnError } from '@fluxmodels/react'
